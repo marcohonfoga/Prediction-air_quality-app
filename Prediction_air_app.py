@@ -71,8 +71,7 @@ if page==pages[0]:
     Cet ensemble de données vise à évaluer la qualité de l'air dans différentes régions. Il comprend 5 000 échantillons, prenant en compte les principaux facteurs environnementaux et démographiques qui influent sur les niveaux de pollution.Caractéristiques principales :Température (°C) : La température moyenne dans la région.Humidité (%): L'humidité relative enregistrée dans la région.Concentration de PM2,5 (µg/m³) : Niveaux de particules fines.Concentration de PM10 (µg/m³): Niveaux de particules grossières. Concentration de NO2 (ppb): Niveaux de dioxyde d'azote. Concentration de SO2 (ppb): Niveaux de dioxyde de soufre.Concentration de CO (ppm) : Niveaux de monoxyde de carbone. Proximité des zones industrielles (km) : La distance à la zone industrielle la plus proche.Densité de population (habitants/km²) : Le nombre d'habitants par kilomètre carré dans la région. Variable cible : Niveaux de qualité de l'air Bien : Air pur avec une pollution minimale.Modérée : Qualité de l'air acceptable, avec quelques polluants.Mauvaise qualité : Pollution notable, potentiellement nocive pour les personnes sensibles.Dangereux : Air fortement pollué, présentant des risques sanitaires importants pour la population.")  
     </div>
     """, 
-    unsafe_allow_html=True
-)
+    unsafe_allow_html=True)
 
 elif page==pages[1]:
 
@@ -84,20 +83,6 @@ elif page==pages[1]:
         st.markdown("**Top 5 du dataset :**")
     # Ajout d'un dégradé de couleur pour rendre le tableau plus vivant
         st.dataframe(df.head().style.background_gradient(cmap='Blues'))
-
-# Section 2 : Types de données
-    if  st.button("Information sur les types de données",key="btn_donnees"):
-        st.write("**Analyse des formats :**")
-    
-    # Transformation en DataFrame pour un affichage propre
-        df_types = df.dtypes.astype(str).to_frame(name='Type de donnée')
-    
-    # Coloration conditionnelle : Orange pour le texte, Vert pour les chiffres
-        def color_types(val):
-            color = 'orange' if 'obj' in val else 'lightgreen'
-            return f'color: {color}; font-weight: bold'
-    
-        st.table(df_types.style.applymap(color_types))
 
 
 
