@@ -68,36 +68,99 @@ if page==pages[0]:
 
 elif page==pages[1]:
 
-    st.write('### Exploration des données')
-    if st.checkbox("Affichage des 5 Première ligne") :
-        st.dataframe(df.head())
-    if  st.checkbox("Information sur les types de donnéé"):
-        st.write(df.dtypes)
 
-    if  st.checkbox("Dimension du Jeux de donnée"):
-        st.write(df.shape)
-    if  st.checkbox("Afficher les valeurs manquantes") :
+    st.write('### 🔍 Exploration des données')
 
-        st.dataframe(df.isna().sum())
-        st.write('Pourcentage des valeurs manquantes')
-        Missing_pctage=df.isna().mean()*100
-        fig, ax = plt.subplots()
+# Section 1 : Aperçu des données
+    if  st.button("Affichage des 5 premières lignes"):
+        st.markdown("**Top 5 du dataset :**")
+    # Ajout d'un dégradé de couleur pour rendre le tableau plus vivant
+        st.dataframe(df.head().style.background_gradient(cmap='Blues'))
 
-        # 2. Votre code de traçage en utilisant l'axe 'ax'
-        Missing_pctage.plot(kind='bar', color='green', edgecolor='red', ax=ax)
-        ax.set_title('Pourcentage des valeurs manquantes par colonne')
-        ax.set_xlabel('Les colonnes')
-        ax.set_ylabel('Pourcentage des valeurs manquantes')
+# Section 2 : Types de données
+    if  st.button("Information sur les types de données",key="btn_donnees"):
+        st.write("**Analyse des formats :**")
+    
+    # Transformation en DataFrame pour un affichage propre
+        df_types = df.dtypes.astype(str).to_frame(name='Type de donnée')
+    
+    # Coloration conditionnelle : Orange pour le texte, Vert pour les chiffres
+        def color_types(val):
+            color = 'orange' if 'obj' in val else 'lightgreen'
+            return f'color: {color}; font-weight: bold'
+    
+        st.table(df_types.style.applymap(color_types))
 
-        # 3. Affichage dans Streamlit
+
+
+
+
+    if st.button("Information sur les types de données"):
+        st.markdown("### 🔍 Analyse des types")
+        df_types = df.dtypes.astype(str).to_frame(name='Type')
+    
+    # On applique une couleur si c'est un objet (texte) pour le repérer vite
+        styled_types = df_types.style.map(lambda x: 'color: orange' if 'obj' in x else 'color: green')
+        st.table(styled_types)
+
+
+
+    
+    if st.button("Dimension du Jeux de donnée"):
+        st.info(f"📏 Le jeu de données contient **{df.shape[0]}** lignes et **{df.shape[1]}** colonnes.")
+
+
+
+    if  st.button("Afficher les valeurs manquantes"):
+        st.subheader("🔍 Analyse du vide (NaN)")
+    
+    # Calculs
+        missing_count = df.isna().sum()
+        missing_pct = (df.isna().mean() * 100).round(2)
+    
+    # Affichage de métriques en colonnes
+        total_missing = missing_count.sum()
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total valeurs manquantes", f"{total_missing}")
+        with col2:
+            st.metric("Moyenne globale", f"{missing_pct.mean():.2f}%")
+
+    # Tableau stylisé (dégradé de rouge pour les valeurs critiques)
+        st.write("**Détails par colonne :**")
+        df_missing = pd.DataFrame({'Absents': missing_count, 'Pourcentage (%)': missing_pct})
+        st.dataframe(df_missing.style.background_gradient(cmap='Reds'))
+
+    # Graphique amélioré avec Seaborn
+        st.write("**Graphique des pourcentages :**")
+        fig, ax = plt.subplots(figsize=(10, 4))
+        sns.barplot(x=missing_pct.index, y=missing_pct.values, palette="magma", ax=ax)
+    
+    # Personnalisation
+        ax.set_title('Taux de données manquantes (%)', fontsize=14, color='darkred')
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+        ax.set_ylabel('% Manquant')
+    
+    # Affichage du graphique
         st.pyplot(fig)
 
 
-    if  st.checkbox("Afficher les doublons") :
-        st.write(df.duplicated().sum())
-    if  st.checkbox("Statistique Descriptives"):
-        st.write(df.describe().T)
 
+
+    if st.button('🔍 Vérifier les doublons', type="primary"):
+        n_doublons = df.duplicated().sum()
+        if n_doublons > 0:
+            st.error(f"⚠️ Attention : {n_doublons} doublons trouvés !")
+            st.dataframe(df[df.duplicated()])
+        else:
+            st.success("✅ Aucun doublon détecté dans le dataset.")
+
+
+
+
+    if  st.button("Statistique Descriptives", type="primary"):
+        st.markdown("### 📈 Aperçu des statistiques")
+        st.dataframe(df.describe().T.style.background_gradient(cmap='Blues'))
         
 elif page==pages[2]:
     st.write("### Analyse de donnée")
@@ -256,7 +319,7 @@ elif page==pages[2]:
 elif page==pages[3]:
     st.write("### La modélisation")
     st.subheader("Machine Learning Automatique")
-    target = st.selectbox("Choisissez variable cible", df.columns)
+    target = st.selectbox("Choisissez variable cible (Air Quality)", df.columns)
     mapping = {
     "Good": 1, 
     "Moderate": 2, 
@@ -325,39 +388,46 @@ elif page==pages[3]:
     ]
     scores=[]
 
+
+    if st.button('🚀 Lancer l\'entraînement avec les données Normales'):
+    # 1. Préparation des indicateurs visuels
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        all_results = [] # Pour stocker les scores et faire le classement à la fin
+
 # Boucle d'entraînement et d'affichage
-    for model, name in zip(models, model_names):
+        for model, name in zip(models, model_names):
     # On crée un bandeau déroulant pour chaque modèle
-        with st.expander(f"📊 {name}", expanded=False):
+            with st.expander(f"📊 {name}", expanded=False):
         
         # Entraînement et prédiction
-            model.fit(X_train_pca, y_train)
-            y_pred = model.predict(X_test_pca)
-            accuracy = model.score(X_test_pca, y_test)
+                model.fit(X_train_pca, y_train)
+                y_pred = model.predict(X_test_pca)
+                accuracy = model.score(X_test_pca, y_test)
         
         # Sauvegarde pour le graphique final
-            scores.append({"Modèle": name, "Accuracy": accuracy})
+                scores.append({"Modèle": name, "Accuracy": accuracy})
 
         # Affichage des métriques clés
-            st.metric(label=f"Précision {name}", value=f"{accuracy:.4f}")
+                st.metric(label=f"Précision {name}", value=f"{accuracy:.4f}")
 
-            col1, col2 = st.columns(2)
+                col1, col2 = st.columns(2)
 
-            with col1:
-                st.markdown("**Matrice de Confusion :**")
-                st.dataframe(pd.DataFrame(confusion_matrix(y_test, y_pred)))
+                with col1:
+                    st.markdown("**Matrice de Confusion :**")
+                    st.dataframe(pd.DataFrame(confusion_matrix(y_test, y_pred)))
 
-            with col2:
-                st.markdown("**Rapport de Classification :**")
+                with col2:
+                    st.markdown("**Rapport de Classification :**")
             # Transformation du rapport textuel en DataFrame exploitable
-                report = classification_report(y_test, y_pred, output_dict=True)
-                st.dataframe(pd.DataFrame(report).transpose())
+                    report = classification_report(y_test, y_pred, output_dict=True)
+                    st.dataframe(pd.DataFrame(report).transpose())
 
 # --- BONUS : Graphique comparatif à la fin ---
-    st.divider()
-    st.subheader("📈 Comparatif Global")
-    df_scores = pd.DataFrame(scores)
-    st.bar_chart(data=df_scores, x="Modèle", y="Accuracy")
+        st.divider()
+        st.subheader("📈 Comparatif Global")
+        df_scores = pd.DataFrame(scores)
+        st.bar_chart(data=df_scores, x="Modèle", y="Accuracy")
 
     st.title("Evaluation des Modèles de Classification avec les deux compsantes APC")
 
@@ -387,36 +457,44 @@ elif page==pages[3]:
     ]
     scores=[]
 
-# Boucle d'entraînement et d'affichage
-    for model, name in zip(models, model_names):
+
+
+    if st.button('🚀 Lancer l\'entraînement avec les données de ACP'):
+    # 1. Préparation des indicateurs visuels
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        all_results = [] # Pour stocker les scores et faire le classement à la fin
+
+    # Boucle d'entraînement et d'affichage
+        for model, name in zip(models, model_names):
     # On crée un bandeau déroulant pour chaque modèle
-        with st.expander(f"📊 {name}", expanded=False):
+            with st.expander(f"📊 {name}", expanded=False):
         
         # Entraînement et prédiction
-            model.fit(X_train_selected, y_train)
-            y_pred = model.predict(X_test_selected)
-            accuracy = model.score(X_test_selected, y_test)
+                model.fit(X_train_selected, y_train)
+                y_pred = model.predict(X_test_selected)
+                accuracy = model.score(X_test_selected, y_test)
         
         # Sauvegarde pour le graphique final
-            scores.append({"Modèle": name, "Accuracy": accuracy})
+                scores.append({"Modèle": name, "Accuracy": accuracy})
 
         # Affichage des métriques clés
-            st.metric(label=f"Précision {name}", value=f"{accuracy:.4f}")
+                st.metric(label=f"Précision {name}", value=f"{accuracy:.4f}")
 
-            col1, col2 = st.columns(2)
+                col1, col2 = st.columns(2)
 
-            with col1:
-                st.markdown("**Matrice de Confusion :**")
-                st.dataframe(pd.DataFrame(confusion_matrix(y_test, y_pred)))
+                with col1:
+                    st.markdown("**Matrice de Confusion :**")
+                    st.dataframe(pd.DataFrame(confusion_matrix(y_test, y_pred)))
 
-            with col2:
-                st.markdown("**Rapport de Classification :**")
+                with col2:
+                    st.markdown("**Rapport de Classification :**")
             # Transformation du rapport textuel en DataFrame exploitable
-                report = classification_report(y_test, y_pred, output_dict=True)
-                st.dataframe(pd.DataFrame(report).transpose())
+                    report = classification_report(y_test, y_pred, output_dict=True)
+                    st.dataframe(pd.DataFrame(report).transpose())
 
 # --- BONUS : Graphique comparatif à la fin ---
-    st.divider()
-    st.subheader("📈 Comparatif Global")
-    df_scores = pd.DataFrame(scores)
-    st.bar_chart(data=df_scores, x="Modèle", y="Accuracy")
+        st.divider()
+        st.subheader("📈 Comparatif Global")
+        df_scores = pd.DataFrame(scores)
+        st.bar_chart(data=df_scores, x="Modèle", y="Accuracy")
