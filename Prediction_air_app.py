@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -40,6 +41,13 @@ from scipy.stats import pearsonr
 import warnings
 warnings.filterwarnings('ignore')
 
+if 'scores' not in st.session_state:
+    st.session_state.scores = []
+if 'best_model' not in st.session_state:
+    st.session_state.best_model = None
+
+
+
 st.title("Prediction de la qualité de l'air")
 
 st.sidebar.write("Sommaire")
@@ -47,7 +55,7 @@ st.sidebar.write("Sommaire")
 st.write("Auteur : HONFOGA Houénagnon Marc")
 df = pd.read_csv("updated_pollution_dataset.csv")
 
-pages=["Contexte du projet","Exploration des données","Analyse de donnéé","Modélisation"]
+pages=["Contexte du projet","Exploration des données","Analyse de donnéé","Modélisation",'Prediction']
 page=st.sidebar.radio("Aller à la page :",pages)
 
 
@@ -319,31 +327,55 @@ elif page==pages[2]:
 elif page==pages[3]:
     st.write("### La modélisation")
     st.subheader("Machine Learning Automatique")
-    target = st.selectbox("Choisissez variable cible (Air Quality)", df.columns)
     mapping = {
     "Good": 1, 
     "Moderate": 2, 
     "Poor": 3,
     "Hazardous": 4 }
 
-# 2. Application conditionnelle
-    if target == 'Air Quality':
-    # On crée une nouvelle colonne ou on remplace l'existante pour le modèle
-        df[target] = df[target].map(mapping)
-        st.write("✅ Encodage de 'Air Quality' effectué.")
-    else:
-    # Notification si une autre variable est choisie
-        st.warning(f"⚠️ '{target}' vous n'avez pas selectionné la bonne variable cible.Aucun mapping manuel appliqué.")
+    # 1. Sélection de la cible
+    target = st.selectbox("🎯 Choisissez la variable cible (Obligatoire)", ["Sélectionner..."] + list(df.columns))
+
+# 2. Blocage si aucune sélection ou mauvaise sélection
+    if target == "Sélectionner...":
+        st.info("👋 Veuillez sélectionner une variable cible pour débloquer l'analyse.")
+        st.stop()  # Arrête l'exécution ici tant que l'utilisateur n'a pas choisi
+
+    if target != 'Air Quality':
+        st.error(f"⚠️ La variable cible choisie ({target}) n'est pas valide pour ce modèle.")
+        st.warning("Veuillez choisir **'Air Quality'** pour appliquer le mapping et lancer l'entraînement.")
+        st.stop()  # Bloque tant que ce n'est pas 'Air Quality'
+
+# 3. Si on arrive ici, c'est que c'est la bonne cible
+    df[target] = df[target].map(mapping)
+    st.success(f"✅ Variable '{target}' configurée et encodée avec succès !")
+
+# Le reste de ton code (entraînement des modèles, etc.) s'affichera seulement maintenant
+    st.divider()
+    st.write("### 🚀 Prêt pour l'entraînement")
+
+
+
+
+
+
+
+
 
     st.write("# Séparer les variables indépendantes et la variable dépendante")
 
     y = df[target]
     X = df.drop('Air Quality',axis=1)
+    st.success("✅ Les données ont été separées avec succès !")
 
-    st.write("# Division du jeu de données :")
 
+
+
+
+
+    st.write("# Division du jeu de données en donnée d'entrainement et de test:")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
+    st.success("✅ Division des données en jeu de donnée d'entrainement et de test réalisé avec succès !")
     
     
     scaler = StandardScaler()
@@ -465,6 +497,13 @@ elif page==pages[3]:
         status_text = st.empty()
         all_results = [] # Pour stocker les scores et faire le classement à la fin
 
+
+
+
+
+
+
+
     # Boucle d'entraînement et d'affichage
         for model, name in zip(models, model_names):
     # On crée un bandeau déroulant pour chaque modèle
@@ -498,3 +537,76 @@ elif page==pages[3]:
         st.subheader("📈 Comparatif Global")
         df_scores = pd.DataFrame(scores)
         st.bar_chart(data=df_scores, x="Modèle", y="Accuracy")
+
+elif page==pages[4] :
+    # --- 1. IDENTIFICATION DU MEILLEUR MODÈLE ---
+
+    # On vérifie si 'scores' existe ET s'il n'est pas vide
+    if 'scores' in locals() and len(scores) > 0:
+        st.divider()
+        st.subheader("🔮 Faire une nouvelle prédiction")
+    # ... la suite de ton code de prédiction ...
+    else:
+        st.info("💡 Cliquez sur le bouton d'entraînement ci-dessus pour activer les prédictions.")
+
+    st.divider()
+    df_scores = pd.DataFrame(scores)
+    if not df_scores.empty:
+        best_row = df_scores.sort_values(by="Accuracy", ascending=False).iloc[0]
+        best_model_name = best_row["Modèle"]
+    # On récupère l'objet modèle réel correspondant au nom
+        best_model = models[model_names.index(best_model_name)]
+    
+        st.subheader(f"🏆 Meilleur Modèle : {best_model_name}")
+        st.info(f"Ce modèle sera utilisé pour les nouvelles prédictions (Précision : {best_row['Accuracy']:.4f})")
+
+    # --- 2. INTERFACE DE SAISIE POUR L'UTILISATEUR ---
+        st.write("### 🔮 Faire une nouvelle prédiction")
+        st.write("Ajustez les paramètres environnementaux ci-dessous :")
+    
+        features = [
+        'Temperature', 'Humidity', 'PM2.5', 'PM10', 'NO2', 
+        'SO2', 'CO', 'Proximity_to_Industrial_Areas', 'Population_Density'
+        ]
+    
+        input_data = []
+        cols = st.columns(3) # Organisation sur 3 colonnes
+
+        for i, feature in enumerate(features):
+            with cols[i % 3]:
+            # On utilise les stats du dataset pour guider l'utilisateur
+                min_val = float(df[feature].min())
+                max_val = float(df[feature].max())
+                mean_val = float(df[feature].mean())
+            
+                val = st.number_input(f"{feature}", value=mean_val, min_value=min_val, max_value=max_val)
+                input_data.append(val)
+
+    # --- 3. BOUTON DE PRÉDICTION ET RÉSULTAT ---
+        if st.button("🚀 Prédire la Qualité de l'Air", type="primary"):
+        # Conversion en array 2D
+            final_features = np.array([input_data])
+        
+        # TRANSFORMATION (Utiliser le scaler entraîné plus haut)
+            final_features_scaled = scaler.transform(final_features)
+        
+        # Prédiction
+            prediction = best_model.predict(final_features_scaled)[0]
+        
+        # Mapping inverse (Chiffre -> Texte)
+            inv_mapping = {v: k for k, v in mapping.items()}
+            resultat = inv_mapping.get(prediction, "Inconnu")
+        
+        # Affichage visuel du résultat
+            st.markdown("---")
+            if resultat == "Good":
+                st.success(f"### 🎉 Résultat : {resultat}")
+                st.balloons()
+            elif resultat == "Moderate":
+                st.warning(f"### ⚠️ Résultat : {resultat}")
+            else:
+                st.error(f"### 🚨 Résultat : {resultat}")
+                st.write("**Recommandation :** Évitez les activités prolongées à l'extérieur.")
+
+    else:
+        st.error("Aucun modèle n'a été entraîné. Veuillez lancer l'entraînement d'abord.")
